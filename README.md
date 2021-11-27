@@ -2,245 +2,152 @@
 ## Поведенческий шаблон
 Я решил выбрать паттерн Команды (Command)
 
-Изначально у нас есть получатель Bulb, в котором есть реализация каждого действия, которое может быть выполнено:
-```java
-// Получатель
-class Bulb
-{
-    public function turnOn()
-    {
-        echo "Лампочка загорелась";
-    }
+Пример:
+```kotlin
+interface OrderCommand {
+    fun execute()
+}
 
-    public function turnOff()
-    {
-        echo "Темнота!";
-    }
+class OrderAddCommand(val id: Long) : OrderCommand {
+    override fun execute() = println("Adding order with id: $id")
+}
+
+class OrderPayCommand(val id: Long) : OrderCommand {
+    override fun execute() = println("Paying for order with id: $id")
+}
+
+class CommandProcessor {
+
+    private val queue = ArrayList<OrderCommand>()
+
+    fun addToQueue(orderCommand: OrderCommand): CommandProcessor =
+        apply {
+            queue.add(orderCommand)
+        }
+
+    fun processCommands(): CommandProcessor =
+        apply {
+            queue.forEach { it.execute() }
+            queue.clear()
+        }
 }
 ```
 
-Затем у нас есть интерфейс Command, который каждая команда должна реализовывать, и затем у нас будет набор команд:
-```java
-interface Command
-{
-    public function execute();
-    public function undo();
-    public function redo();
-}
-
-// Команда
-class TurnOn implements Command
-{
-    protected $bulb;
-
-    public function __construct(Bulb $bulb)
-    {
-        $this->bulb = $bulb;
-    }
-
-    public function execute()
-    {
-        $this->bulb->turnOn();
-    }
-
-    public function undo()
-    {
-        $this->bulb->turnOff();
-    }
-
-    public function redo()
-    {
-        $this->execute();
-    }
-}
-
-class TurnOff implements Command
-{
-    protected $bulb;
-
-    public function __construct(Bulb $bulb)
-    {
-        $this->bulb = $bulb;
-    }
-
-    public function execute()
-    {
-        $this->bulb->turnOff();
-    }
-
-    public function undo()
-    {
-        $this->bulb->turnOn();
-    }
-
-    public function redo()
-    {
-        $this->execute();
-    }
-}
+Использование:
+```kotlin
+CommandProcessor()
+    .addToQueue(OrderAddCommand(1L))
+    .addToQueue(OrderAddCommand(2L))
+    .addToQueue(OrderPayCommand(2L))
+    .addToQueue(OrderPayCommand(1L))
+    .processCommands()
 ```
 
-Затем у нас есть Invoker, с которым клиент будет взаимодействовать для обработки любых команд:
-```java
-// Invoker
-class RemoteControl
-{
-    public function submit(Command $command)
-    {
-        $command->execute();
-    }
-}
+Выходные данные:
+```
+Adding order with id: 1
+Adding order with id: 2
+Paying for order with id: 2
+Paying for order with id: 1
 ```
 
-Наконец, мы можем увидеть, как использовать нашего клиента:
-```java
-$bulb = new Bulb();
-
-$turnOn = new TurnOn($bulb);
-$turnOff = new TurnOff($bulb);
-
-$remote = new RemoteControl();
-$remote->submit($turnOn); // Лампочка загорелась!
-$remote->submit($turnOff); // Темнота!
-```
-Шаблон команда может быть использован для реализации системы, основанной на транзакциях, где вы сохраняете историю команд, как только их выполняете.
+***
 
 ## Пораждающий шаблон
 В качестве пораждающего паттерна я решил взять Фабричный метод (Fabric Method)
 
-Изначально у нас есть интерфейс Interviewer и несколько реализаций для него:
-```java
-interface Interviewer
-{
-    public function askQuestions();
+Пример:
+```kotlin
+sealed class Country {
+    object USA : Country()
 }
 
-class Developer implements Interviewer
-{
-    public function askQuestions()
-    {
-        echo 'Спрашивает про шаблоны проектирования!';
-    }
-}
+object Spain : Country()
+class Greece(val someProperty: String) : Country()
+data class Canada(val someProperty: String) : Country()
 
-class CommunityExecutive implements Interviewer
-{
-    public function askQuestions()
-    {
-        echo 'Спрашивает о работе с сообществом';
-    }
-}
-```
+class Currency(
+    val code: String
+)
 
-Теперь создадим нашего HiringManager:
-```java
-abstract class HiringManager
-{
+object CurrencyFactory {
 
-    // Фабричный метод
-    abstract public function makeInterviewer(): Interviewer;
-
-    public function takeInterview()
-    {
-        $interviewer = $this->makeInterviewer();
-        $interviewer->askQuestions();
-    }
+    fun currencyForCountry(country: Country): Currency =
+        when (country) {
+            is Greece -> Currency("EUR")
+            is Spain -> Currency("EUR")
+            is Country.USA -> Currency("USD")
+            is Canada -> Currency("CAD")
+        }
 }
 ```
 
-И теперь любой дочерний класс может расширять его и предоставлять необходимого интервьюера:
-```java
-class DevelopmentManager extends HiringManager
-{
-    public function makeInterviewer(): Interviewer
-    {
-        return new Developer();
-    }
-}
+Использование:
+```kotlin
+val greeceCurrency = CurrencyFactory.currencyForCountry(Greece("")).code
+println("Greece currency: $greeceCurrency")
 
-class MarketingManager extends HiringManager
-{
-    public function makeInterviewer(): Interviewer
-    {
-        return new CommunityExecutive();
-    }
-}
+val usaCurrency = CurrencyFactory.currencyForCountry(Country.USA).code
+println("USA currency: $usaCurrency")
+
+assertThat(greeceCurrency).isEqualTo("EUR")
+assertThat(usaCurrency).isEqualTo("USD")
 ```
 
-Пример использования:
-```java
-$devManager = new DevelopmentManager();
-$devManager->takeInterview(); // Вывод: Спрашивает о шаблонах проектирования!
-
-$marketingManager = new MarketingManager();
-$marketingManager->takeInterview(); // Вывод: Спрашивает о работе с сообщест
+Выходные данные:
 ```
-Полезен, когда есть некоторая общая обработка в классе, но необходимый подкласс динамически определяется во время выполнения.
+Greece currency: EUR
+US currency: USD
+UK currency: No Currency Code Available
+```
+
+***
 
 ## Структурный шаблон
 Из структурных я решил выбрать Компоновщик (Composite)
 
-Возьмем наш пример с рабочими. У нас есть Employee разных типов:
-```java
-interface Assignee {
-  public function canHandleTask($task): bool;
-  public function takeTask($task);
+Пример:
+```kotlin
+open class Equipment(private var price: Int, private var name: String) {
+    open fun getPrice(): Int = price
 }
 
-class Employee implements Assignee {
-  // реализуем методы интерфейса
-}
+/*
+[composite]
+*/
 
-class Team implements Assignee {
-  /** @var Assignee[] */
-  private $assignees;
+open class Composite(name: String) : Equipment(0, name) {
+    val equipments = ArrayList<Equipment>()
 
-  // вспомогательные методы для управления композитом:
-  public function add($assignee);
-  public function remove($assignee);
-
-  // метода интерфейса Employee
-
-  public function canHandleTask($task): bool {
-    foreach ($this->assignees as $assignee) if ($assignee->canHandleTask($task)) return true;
-    return false;
-  }
-  public function takeTask($task) {
-    // может быть разная имплементация - допустим, некоторые задания требуют нескольких человек из команды одновременно
-    // в простейшем случае берем первого незанятого работника среди this->assignees
-    $assignee = ...;
-    $assignee->takeTask($task);
-  }
-}
-```
-
-Теперь у нас есть TaskManager:
-```java
-class TaskManager {
-  private $assignees;
-  public function performTask($task) {
-    foreach ($this->assignees as $assignee) {
-       if ($assignee->canHandleTask($task)) {
-         $assignee->takeTask($task);
-         return;
-       }
+    fun add(equipment: Equipment) {
+        this.equipments.add(equipment)
     }
 
-    throw new Exception('Cannot handle the task - please hire more people');
-  }
+    override fun getPrice(): Int {
+        return equipments.map { it.getPrice() }.sum()
+    }
 }
+
+/*
+ leafs
+*/
+
+class Cabbinet : Composite("cabbinet")
+class FloppyDisk : Equipment(70, "Floppy Disk")
+class HardDrive : Equipment(250, "Hard Drive")
+class Memory : Equipment(280, "Memory")
 ```
 
-Способ применения:
-```java
-$employee1 = new Employee();
-$employee2 = new Employee();
-$employee3 = new Employee();
-$employee4 = new Employee();
-$team1 = new Team([$employee3, $employee4);
+Использование:
+```kotlin
+var cabbinet = Cabbinet()
+cabbinet.add(FloppyDisk())
+cabbinet.add(HardDrive())
+cabbinet.add(Memory())
+println(cabbinet.getPrice())
+```
 
-// ВНИМАНИЕ: передаем команду в taskManager как единый композит.
-// Сам taskManager не знает, что это команда и работает с ней без модификации своей логики.
-$taskManager = new TaskManager([$employee1, $employee2, $team1]);
-$taskManager->preformTask($task);
+Выходные данные:
+```
+600
 ```
