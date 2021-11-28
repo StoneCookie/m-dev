@@ -4,51 +4,82 @@
 
 Пример:
 ```kotlin
-interface OrderCommand {
-    fun execute()
-}
+class CommandPattern {
 
-class OrderAddCommand(val id: Long) : OrderCommand {
-    override fun execute() = println("Adding order with id: $id")
-}
+    interface Command {
+        fun execute()
+    }
 
-class OrderPayCommand(val id: Long) : OrderCommand {
-    override fun execute() = println("Paying for order with id: $id")
-}
-
-class CommandProcessor {
-
-    private val queue = ArrayList<OrderCommand>()
-
-    fun addToQueue(orderCommand: OrderCommand): CommandProcessor =
-        apply {
-            queue.add(orderCommand)
+    class Receiver {
+        fun start() {
+            println("Start computer")
         }
 
-    fun processCommands(): CommandProcessor =
-        apply {
-            queue.forEach { it.execute() }
-            queue.clear()
+        fun stop() {
+            println("Stop computer")
         }
+
+        fun reset() {
+            println("Reset computer")
+        }
+    }
+
+    class StartCommand(private val receiver: Receiver): Command {
+        override fun execute() {
+            receiver.start()
+        }
+    }
+    class StopCommand(private val receiver: Receiver): Command {
+        override fun execute() {
+            receiver.stop()
+        }
+    }
+    class ResetCommand(private val receiver: Receiver): Command {
+        override fun execute() {
+            receiver.reset()
+        }
+    }
+
+    class Invoker(
+        private var start: StartCommand,
+        private var stop: StopCommand,
+        private var reset: ResetCommand
+    ) {
+        fun startComputer() {
+            start.execute()
+        }
+        fun stopComputer() {
+            stop.execute()
+        }
+        fun resetComputer() {
+            reset.execute()
+        }
+    }
 }
+
+
 ```
 
 Использование:
 ```kotlin
-CommandProcessor()
-    .addToQueue(OrderAddCommand(1L))
-    .addToQueue(OrderAddCommand(2L))
-    .addToQueue(OrderPayCommand(2L))
-    .addToQueue(OrderPayCommand(1L))
-    .processCommands()
+fun main() {
+    val command = Receiver()
+    val invoker = Invoker(
+        StartCommand(command),
+        StopCommand(command),
+        ResetCommand(command)
+    )
+    invoker.startComputer()
+    invoker.stopComputer()
+    invoker.resetComputer()
+}
 ```
 
 Выходные данные:
 ```
-Adding order with id: 1
-Adding order with id: 2
-Paying for order with id: 2
-Paying for order with id: 1
+Start computer
+Stop computer
+Reset computer
 ```
 
 ***
@@ -58,96 +89,131 @@ Paying for order with id: 1
 
 Пример:
 ```kotlin
-sealed class Country {
-    object USA : Country()
-}
+class FactoryMethod {
+    interface Fruits {
+        fun mutate()
+    }
 
-object Spain : Country()
-class Greece(val someProperty: String) : Country()
-data class Canada(val someProperty: String) : Country()
-
-class Currency(
-    val code: String
-)
-
-object CurrencyFactory {
-
-    fun currencyForCountry(country: Country): Currency =
-        when (country) {
-            is Greece -> Currency("EUR")
-            is Spain -> Currency("EUR")
-            is Country.USA -> Currency("USD")
-            is Canada -> Currency("CAD")
+    class Orange : Fruits {
+        override fun mutate() {
+            println("Это апельсин!")
         }
+    }
+
+    class Apple : Fruits {
+        override fun mutate() {
+            println("Это яблоко!")
+        }
+    }
+
+    class Mango : Fruits {
+        override fun mutate() {
+            println("А это манго!")
+        }
+    }
+
+    enum class FruitsType {
+        Orange, Apple, Mango
+    }
+
+    class FruitsFactory {
+        fun showFruits(type: FruitsType): Fruits? {
+            return when (type) {
+                FruitsType.Orange -> Orange()
+                FruitsType.Apple -> Apple()
+                FruitsType.Mango -> Mango()
+                else -> null
+            }
+        }
+    }
 }
 ```
 
 Использование:
 ```kotlin
-val greeceCurrency = CurrencyFactory.currencyForCountry(Greece("")).code
-println("Greece currency: $greeceCurrency")
-
-val usaCurrency = CurrencyFactory.currencyForCountry(Country.USA).code
-println("USA currency: $usaCurrency")
-
-assertThat(greeceCurrency).isEqualTo("EUR")
-assertThat(usaCurrency).isEqualTo("USD")
+fun main() {
+    val factory = FactoryMethod.FruitsFactory()
+    val orange = factory.showFruits(FactoryMethod.FruitsType.Orange)
+    val apple = factory.showFruits(FactoryMethod.FruitsType.Apple)
+    val mango = factory.showFruits(FactoryMethod.FruitsType.Mango)
+    orange?.mutate()
+    apple?.mutate()
+    mango?.mutate()
+}
 ```
 
 Выходные данные:
 ```
-Greece currency: EUR
-US currency: USD
-UK currency: No Currency Code Available
+Это апельсин!
+Это яблоко!
+А это манго!
 ```
 
 ***
 
 ## Структурный шаблон
-Из структурных я решил выбрать Компоновщик (Composite)
+Из структурных я решил выбрать Фасадный метод (Facade)
 
 Пример:
 ```kotlin
-open class Equipment(private var price: Int, private var name: String) {
-    open fun getPrice(): Int = price
-}
-
-/*
-[composite]
-*/
-
-open class Composite(name: String) : Equipment(0, name) {
-    val equipments = ArrayList<Equipment>()
-
-    fun add(equipment: Equipment) {
-        this.equipments.add(equipment)
+class Facade {
+    enum class Fruit {
+        Pineapple,
+        Orange,
+        Mango;
     }
 
-    override fun getPrice(): Int {
-        return equipments.map { it.getPrice() }.sum()
+    interface Juice {
+        fun mix(element: String, baseFruit: Fruit)
+    }
+
+    class PineappleJuice : Juice {
+        override fun mix(element: String, baseFruit: Fruit) {
+            println("Add $element to ${baseFruit.name} juice concentrate")
+        }
+    }
+
+    class OrangeJuice : Juice {
+        override fun mix(element: String, baseFruit: Fruit) {
+            println("Add $element to ${baseFruit.name} juice concentrate")
+        }
+    }
+
+    class MangoJuice : Juice {
+        override fun mix(element: String, baseFruit: Fruit) {
+            println("Add $element to ${baseFruit.name} juice concentrate")
+        }
+    }
+
+    class JuiceManager {
+        private val pineappleJuice = PineappleJuice()
+        private val orangeJuice = OrangeJuice()
+        private val mangoJuice = MangoJuice()
+
+        fun mix(element: String, finJuice: Fruit) {
+            when (finJuice) {
+                Fruit.Pineapple -> pineappleJuice.mix(element, finJuice)
+                Fruit.Orange -> orangeJuice.mix(element, finJuice)
+                Fruit.Mango -> mangoJuice.mix(element, finJuice)
+            }
+        }
     }
 }
-
-/*
- leafs
-*/
-
-class Cabbinet : Composite("cabbinet")
-class FloppyDisk : Equipment(70, "Floppy Disk")
-class HardDrive : Equipment(250, "Hard Drive")
-class Memory : Equipment(280, "Memory")
 ```
 
 Использование:
 ```kotlin
-var cabbinet = Cabbinet()
-cabbinet.add(FloppyDisk())
-cabbinet.add(HardDrive())
-cabbinet.add(Memory())
-println(cabbinet.getPrice())
+fun main() {
+    val juiceManager = Facade.JuiceManager()
+    juiceManager.mix("water", Facade.Fruit.Pineapple)
+    juiceManager.mix("apple juice and water", Facade.Fruit.Orange)
+    juiceManager.mix("orange juice and water", Facade.Fruit.Mango)
+}
 ```
 
 Выходные данные:
 ```
-600
+Add water to Pineapple juice concentrate
+Add apple juice and water to Orange juice concentrate
+Add orange juice and water to Mango juice concentrate
 ```
