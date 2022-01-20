@@ -1,3 +1,10 @@
 <resources>
-    <string name="app_name">HW_1</string>
+    <string name="app_name">HW_6</string>
+    <string name="title">Лабораторная работа 6</string>
+    <string name="add_node">Добавить NODE</string>
+    <string name="add">Добавить</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="child_elem">Дочерний элемент</string>
+    <string name="parent_elem">Родительский элемент</string>
 </resources>
